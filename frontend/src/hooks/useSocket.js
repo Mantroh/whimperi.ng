@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { io } from 'socket.io-client';
 import { SERVER_URL } from '../config';
 
@@ -9,6 +9,7 @@ import { SERVER_URL } from '../config';
 export function useSocket() {
   const socketRef = useRef(null);
   const listenersRef = useRef(new Map());
+  const [isConnected, setIsConnected] = useState(false);
 
   // Initialize socket connection
   useEffect(() => {
@@ -27,10 +28,12 @@ export function useSocket() {
 
     socket.on('connect', () => {
       console.log('✅ Connected to server:', socket.id);
+      setIsConnected(true);
     });
 
     socket.on('disconnect', (reason) => {
       console.log('❌ Disconnected from server. Reason:', reason);
+      setIsConnected(false);
     });
 
     socket.on('connect_error', (error) => {
@@ -92,6 +95,7 @@ export function useSocket() {
     socket: socketRef.current,
     emit,
     on,
-    off
+    off,
+    isConnected
   };
 }

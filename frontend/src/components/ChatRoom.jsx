@@ -6,7 +6,7 @@ import VideoCall from './VideoCall';
 import './ChatRoom.css';
 
 function ChatRoom({ roomId, username, onLeaveRoom }) {
-  const { emit, on, off } = useSocket();
+  const { emit, on, off, isConnected } = useSocket();
   
   // Chat state
   const [messages, setMessages] = useState([]);
@@ -20,14 +20,20 @@ function ChatRoom({ roomId, username, onLeaveRoom }) {
   const [incomingCall, setIncomingCall] = useState(null);
   const [callType, setCallType] = useState(null); // 'audio' or 'video'
   const [remoteSocketId, setRemoteSocketId] = useState(null);
+  const [isCaller, setIsCaller] = useState(false); // Track if we initiated the call
 
   const typingTimeoutRef = useRef(null);
 
-  // Join room on mount
+  // Join room when socket connects
   useEffect(() => {
-    emit('join-room', { roomId, username });
+    if (isConnected) {
+      console.log('🔌 Socket connected, joining room:', roomId);
+      emit('join-room', { roomId, username });
+    }
+  }, [isConnected, roomId, username, emit]);
 
-    // Setup event listeners
+  // Setup event listeners
+  useEffect(() => {
     const handleRoomJoined = (data) => {
       console.log('Room joined:', data);
       setMessages(data.messages || []);
@@ -111,6 +117,11 @@ function ChatRoom({ roomId, username, onLeaveRoom }) {
       setRemoteSocketId(null);
     };
 
+    const handleCallAcceptedByRemote = (data) => {
+      console.log('🎉 Remote user accepted the call!', data);
+      // Call already started on our side, VideoCall will handle WebRTC
+    };
+
     // Register all listeners
     on('room-joined', handleRoomJoined);
     on('room-full', handleRoomFull);
@@ -123,6 +134,7 @@ function ChatRoom({ roomId, username, onLeaveRoom }) {
     on('user-stop-typing', handleUserStopTyping);
     on('messages-marked-read', handleMessagesMarkedRead);
     on('incoming-call', handleIncomingCall);
+    on('call-accepted', handleCallAcceptedByRemote);
     on('call-rejected', handleCallRejected);
     on('call-ended', handleCallEnded);
 
@@ -140,6 +152,7 @@ function ChatRoom({ roomId, username, onLeaveRoom }) {
       off('user-stop-typing', handleUserStopTyping);
       off('messages-marked-read', handleMessagesMarkedRead);
       off('incoming-call', handleIncomingCall);
+      off('call-accepted', handleCallAcceptedByRemote);
       off('call-rejected', handleCallRejected);
       off('call-ended', handleCallEnded);
       
@@ -174,12 +187,27 @@ function ChatRoom({ roomId, username, onLeaveRoom }) {
     emit('stop-typing', { roomId });
   };
 
+  // Debug: log when inCall state changes
+  useEffect(() => {
+    console.log('🔄 Call state changed:', { inCall, callType, remoteSocketId, isCaller });
+  }, [inCall, callType, remoteSocketId, isCaller]);
+
   const handleStartCall = (isVideo) => {
     const otherUser = users.find(u => u.username !== username);
-    if (!otherUser) return;
+    if (!otherUser) {
+      console.log('❌ Cannot start call: no other user found');
+      return;
+    }
+
+    console.log('📞 Starting call:', {
+      callType: isVideo ? 'video' : 'audio',
+      remoteSocketId: otherUser.socketId,
+      isCaller: true
+    });
 
     setCallType(isVideo ? 'video' : 'audio');
     setRemoteSocketId(otherUser.socketId); // Set remote socket ID before initiating call
+    setIsCaller(true); // We are initiating the call
     setInCall(true);
     emit('call-user', { roomId, isVideo });
   };
@@ -187,8 +215,15 @@ function ChatRoom({ roomId, username, onLeaveRoom }) {
   const handleAcceptCall = () => {
     if (!incomingCall) return;
     
+    console.log('✅ Accepting call:', {
+      callType: incomingCall.isVideo ? 'video' : 'audio',
+      remoteSocketId: incomingCall.fromSocketId,
+      isCaller: false
+    });
+    
     setCallType(incomingCall.isVideo ? 'video' : 'audio');
     setRemoteSocketId(incomingCall.fromSocketId); // Set remote socket ID!
+    setIsCaller(false); // We are accepting, not calling
     setInCall(true);
     emit('call-accepted', { 
       roomId, 
@@ -212,6 +247,7 @@ function ChatRoom({ roomId, username, onLeaveRoom }) {
     setInCall(false);
     setCallType(null);
     setRemoteSocketId(null);
+    setIsCaller(false);
   };
 
   const otherUser = users.find(u => u.username !== username);
@@ -300,6 +336,10 @@ function ChatRoom({ roomId, username, onLeaveRoom }) {
           isVideo={callType === 'video'}
           remoteSocketId={remoteSocketId}
           onEndCall={handleEndCall}
+          emit={emit}
+          on={on}
+          off={off}
+          isCaller={isCaller}
         />
       )}
 

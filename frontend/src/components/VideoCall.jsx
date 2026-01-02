@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSocket } from '../hooks/useSocket';
 import './VideoCall.css';
 
 // STUN servers for NAT traversal
@@ -10,8 +9,7 @@ const ICE_SERVERS = {
   ]
 };
 
-function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall }) {
-  const { emit, on, off } = useSocket();
+function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall, emit, on, off, isCaller }) {
   
   const [callStatus, setCallStatus] = useState('connecting'); // connecting, connected, ended
   const [isMuted, setIsMuted] = useState(false);
@@ -22,19 +20,40 @@ function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall }) {
   const peerConnectionRef = useRef(null);
   const localStreamRef = useRef(null);
   const remoteSocketIdRef = useRef(remoteSocketId);
+  const isInitializedRef = useRef(false); // Track if call has been initialized
 
   useEffect(() => {
     remoteSocketIdRef.current = remoteSocketId;
   }, [remoteSocketId]);
 
+  // Mount effect - runs once
   useEffect(() => {
-    console.log('🎥 VideoCall component mounted with remoteSocketId:', remoteSocketId);
-    initializeCall();
-
+    console.log('🎥 VideoCall component mounted');
+    
     return () => {
+      console.log('🧹 VideoCall unmounting - cleaning up');
       cleanup();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Initialize call when remoteSocketId becomes available (ONLY ONCE)
+  useEffect(() => {
+    if (!remoteSocketId) {
+      console.log('⚠️ remoteSocketId not set yet, waiting...');
+      return;
+    }
+    
+    if (isInitializedRef.current) {
+      console.log('⏭️ Call already initialized, skipping...');
+      return;
+    }
+    
+    console.log('✅ remoteSocketId available:', remoteSocketId, '- initializing call');
+    isInitializedRef.current = true;
+    initializeCall();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remoteSocketId]); // Only initialize when remoteSocketId changes from null to a value
 
   /**
    * Initialize media stream and peer connection
@@ -42,11 +61,18 @@ function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall }) {
   const initializeCall = async () => {
     try {
       console.log('🚀 initializeCall() starting...');
+      console.log('   roomId:', roomId);
+      console.log('   isVideo:', isVideo);
+      console.log('   remoteSocketId:', remoteSocketIdRef.current);
+      console.log('   isCaller:', isCaller);
+      
       // Get local media stream
+      console.log('🎤 Requesting media access...');
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
         video: isVideo
       });
+      console.log('✅ Media access granted');
 
       localStreamRef.current = stream;
       if (localVideoRef.current) {
@@ -54,20 +80,33 @@ function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall }) {
       }
 
       // Create peer connection
+      console.log('🔗 Creating peer connection...');
       createPeerConnection();
+      console.log('✅ Peer connection created');
 
       // Add local stream tracks to peer connection
       stream.getTracks().forEach(track => {
         peerConnectionRef.current.addTrack(track, stream);
       });
+      console.log('✅ Local tracks added to peer connection');
 
       console.log('📡 About to call setupWebRTCListeners()...');
       // Setup WebRTC event listeners
       setupWebRTCListeners();
 
-      console.log('✅ Call initialized');
+      // Only caller creates offer
+      if (isCaller) {
+        console.log('👤 We are the CALLER - creating offer for:', remoteSocketIdRef.current);
+        setTimeout(async () => {
+          await createAndSendOffer();
+        }, 1000); // Give receiver time to set up
+      } else {
+        console.log('👥 We are the RECEIVER - waiting for offer from:', remoteSocketIdRef.current);
+      }
+
+      console.log('✅ Call initialized successfully');
     } catch (error) {
-      console.error('Error initializing call:', error);
+      console.error('❌ Error initializing call:', error);
       alert('Could not access camera/microphone');
       onEndCall();
     }
@@ -138,92 +177,107 @@ function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall }) {
   };
 
   /**
+   * Create and send WebRTC offer to remote peer
+   */
+  const createAndSendOffer = async () => {
+    try {
+      console.log('🎬 Creating offer for', remoteSocketIdRef.current);
+      const offer = await peerConnectionRef.current.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: isVideo
+      });
+      await peerConnectionRef.current.setLocalDescription(offer);
+      
+      console.log('📤 Sending offer to', remoteSocketIdRef.current);
+      emit('webrtc-offer', {
+        roomId,
+        offer: offer,
+        targetSocketId: remoteSocketIdRef.current
+      });
+    } catch (error) {
+      console.error('❌ Error creating offer:', error);
+    }
+  };
+
+  /**
    * Setup WebRTC signaling listeners
    */
   const setupWebRTCListeners = () => {
-    console.log('📡 Setting up WebRTC listeners... remoteSocketId:', remoteSocketIdRef.current);
+    console.log('📡 ========== SETTING UP WEBRTC LISTENERS ==========');
+    console.log('   remoteSocketId:', remoteSocketIdRef.current);
+    console.log('   roomId:', roomId);
     
-    // Handle call accepted - create offer
-    const handleCallAccepted = async (data) => {
-      console.log('✅ Call accepted by', data.from, 'fromSocketId:', data.fromSocketId);
-      remoteSocketIdRef.current = data.fromSocketId;
-      
-      // Add a small delay to ensure receiver has peer connection ready
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Create and send offer
-      try {
-        console.log('🎬 Creating offer...');
-        const offer = await peerConnectionRef.current.createOffer({
-          offerToReceiveAudio: true,
-          offerToReceiveVideo: isVideo
-        });
-        await peerConnectionRef.current.setLocalDescription(offer);
-        
-        console.log('📤 Sending offer to', data.fromSocketId);
-        emit('webrtc-offer', {
-          roomId,
-          offer: offer,
-          targetSocketId: data.fromSocketId
-        });
-      } catch (error) {
-        console.error('❌ Error creating offer:', error);
-      }
-    };
-
     // Handle receiving offer - create answer
     const handleWebRTCOffer = async (data) => {
-      console.log('📥 Received WebRTC offer from', data.fromSocketId, 'offer type:', data.offer?.type);
+      console.log('📥 ========== RECEIVED WEBRTC OFFER ==========');
+      console.log('   From:', data.fromSocketId);
+      console.log('   Offer type:', data.offer?.type);
+      console.log('   Current signaling state:', peerConnectionRef.current?.signalingState);
       remoteSocketIdRef.current = data.fromSocketId;
 
       try {
         // Ensure peer connection exists and is ready
         if (!peerConnectionRef.current) {
-          console.error('❌ Peer connection not initialized');
+          console.error('❌ CRITICAL: Peer connection not initialized!');
           return;
         }
 
-        console.log('⚙️ Setting remote description (offer)...');
+        console.log('⚙️ Calling setRemoteDescription with offer...');
         await peerConnectionRef.current.setRemoteDescription(
           new RTCSessionDescription(data.offer)
         );
+        console.log('✅ Offer applied successfully');
 
         console.log('🎬 Creating answer...');
         const answer = await peerConnectionRef.current.createAnswer({
           offerToReceiveAudio: true,
           offerToReceiveVideo: isVideo
         });
+        console.log('✅ Answer created');
         
+        console.log('⚙️ Setting local description with answer...');
         await peerConnectionRef.current.setLocalDescription(answer);
+        console.log('✅ Local description set');
 
-        console.log('📤 Sending answer to', data.fromSocketId);
+        console.log('📤 ========== SENDING ANSWER ==========');
+        console.log('   To:', data.fromSocketId);
         emit('webrtc-answer', {
           roomId,
           answer: answer,
           targetSocketId: data.fromSocketId
         });
+        console.log('✅ Answer sent successfully');
       } catch (error) {
-        console.error('❌ Error handling offer:', error);
+        console.error('❌ ========== ERROR HANDLING OFFER ==========');
+        console.error('   Error:', error);
       }
     };
 
     // Handle receiving answer
     const handleWebRTCAnswer = async (data) => {
-      console.log('📥 Received WebRTC answer from', data.fromSocketId);
+      console.log('📥 ========== RECEIVED WEBRTC ANSWER ==========');
+      console.log('   From:', data.fromSocketId);
+      console.log('   Answer type:', data.answer?.type);
+      console.log('   Current signaling state:', peerConnectionRef.current?.signalingState);
       
       try {
         if (!peerConnectionRef.current) {
-          console.error('❌ Peer connection not initialized');
+          console.error('❌ CRITICAL: Peer connection not initialized!');
           return;
         }
 
-        console.log('⚙️ Setting remote description (answer)...');
+        console.log('⚙️ Calling setRemoteDescription with answer...');
         await peerConnectionRef.current.setRemoteDescription(
           new RTCSessionDescription(data.answer)
         );
-        console.log('✅ Answer set successfully - waiting for ICE candidates');
+        console.log('✅ ========== ANSWER APPLIED SUCCESSFULLY ==========');
+        console.log('   New signaling state:', peerConnectionRef.current.signalingState);
+        console.log('   Connection state:', peerConnectionRef.current.connectionState);
+        console.log('   ICE connection state:', peerConnectionRef.current.iceConnectionState);
       } catch (error) {
-        console.error('❌ Error handling answer:', error);
+        console.error('❌ ========== ERROR APPLYING ANSWER ==========');
+        console.error('   Error:', error);
+        console.error('   Signaling state:', peerConnectionRef.current?.signalingState);
       }
     };
 
@@ -258,14 +312,12 @@ function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall }) {
       onEndCall();
     };
 
-    on('call-accepted', handleCallAccepted);
     on('webrtc-offer', handleWebRTCOffer);
     on('webrtc-answer', handleWebRTCAnswer);
     on('ice-candidate', handleIceCandidate);
     on('call-ended', handleCallEnded);
 
     console.log('✅ WebRTC listeners registered:', {
-      'call-accepted': true,
       'webrtc-offer': true,
       'webrtc-answer': true,
       'ice-candidate': true,
@@ -274,7 +326,6 @@ function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall }) {
 
     // Cleanup listeners
     return () => {
-      off('call-accepted', handleCallAccepted);
       off('webrtc-offer', handleWebRTCOffer);
       off('webrtc-answer', handleWebRTCAnswer);
       off('ice-candidate', handleIceCandidate);
