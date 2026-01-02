@@ -1,0 +1,172 @@
+.chat-room {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #0b141a;
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.error-banner {
+  background: #c53f3f;
+  color: white;
+  padding: 12px;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* Header */
+.chat-header {
+  background: #202c33;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #2a3942;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.back-button {
+  background: none;
+  border: none;
+  color: #8696a0;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color 0.2s;
+}
+
+.back-button:hover {
+  color: #e9edef;
+}
+
+.room-info h2 {
+  color: #e9edef;
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.status {
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.status .online {
+  color: #00a884;
+}
+
+.status .offline {
+  color: #8696a0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.call-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 8px;
+  transition: transform 0.2s;
+}
+
+.call-button:hover {
+  transform: scale(1.1);
+}
+
+.call-button:active {
+  transform: scale(0.95);
+}
+
+/* Incoming Call Modal */
+.incoming-call-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-content {
+  background: #202c33;
+  border-radius: 16px;
+  padding: 32px;
+  text-align: center;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.modal-content h3 {
+  color: #e9edef;
+  font-size: 24px;
+  margin-bottom: 12px;
+}
+
+.modal-content p {
+  color: #8696a0;
+  font-size: 16px;
+  margin-bottom: 24px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.accept-button,
+.reject-button {
+  padding: 12px 32px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.accept-button {
+  background: #00a884;
+  color: white;
+}
+
+.accept-button:hover {
+  background: #008f6c;
+  transform: translateY(-1px);
+}
+
+.reject-button {
+  background: #c53f3f;
+  color: white;
+}
+
+.reject-button:hover {
+  background: #a33333;
+  transform: translateY(-1px);
+}
+
+.accept-button:active,
+.reject-button:active {
+  transform: translateY(0);
+}
