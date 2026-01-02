@@ -187,6 +187,7 @@ function ChatRoom({ roomId, username, onLeaveRoom }) {
     if (!incomingCall) return;
     
     setCallType(incomingCall.isVideo ? 'video' : 'audio');
+    setRemoteSocketId(incomingCall.fromSocketId); // Set remote socket ID!
     setInCall(true);
     emit('call-accepted', { 
       roomId, 
