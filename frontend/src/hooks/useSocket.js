@@ -12,11 +12,15 @@ export function useSocket() {
 
   // Initialize socket connection
   useEffect(() => {
+    console.log('🔌 Initializing Socket.IO connection to:', SERVER_URL);
+    
     socketRef.current = io(SERVER_URL, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
-      reconnectionDelay: 1000
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      autoConnect: true
     });
 
     const socket = socketRef.current;
@@ -25,12 +29,12 @@ export function useSocket() {
       console.log('✅ Connected to server:', socket.id);
     });
 
-    socket.on('disconnect', () => {
-      console.log('❌ Disconnected from server');
+    socket.on('disconnect', (reason) => {
+      console.log('❌ Disconnected from server. Reason:', reason);
     });
 
     socket.on('connect_error', (error) => {
-      console.error('Connection error:', error);
+      console.error('❌ Connection error:', error.message || error);
     });
 
     return () => {
@@ -40,15 +44,25 @@ export function useSocket() {
 
   // Emit event to server
   const emit = useCallback((event, data) => {
-    if (socketRef.current) {
+    if (socketRef.current && socketRef.current.connected) {
+      console.log(`📤 Emitting event: ${event}`, data);
       socketRef.current.emit(event, data);
+    } else {
+      console.warn(`⚠️ Cannot emit ${event} - socket not connected`, {
+        exists: !!socketRef.current,
+        connected: socketRef.current?.connected
+      });
     }
   }, []);
 
   // Listen for event from server
   const on = useCallback((event, handler) => {
     if (socketRef.current) {
-      socketRef.current.on(event, handler);
+      console.log(`👂 Listening for event: ${event}`);
+      socketRef.current.on(event, (data) => {
+        console.log(`📩 Received event: ${event}`, data);
+        handler(data);
+      });
       
       // Track listener for cleanup
       if (!listenersRef.current.has(event)) {

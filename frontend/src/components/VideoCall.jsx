@@ -28,6 +28,7 @@ function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall }) {
   }, [remoteSocketId]);
 
   useEffect(() => {
+    console.log('🎥 VideoCall component mounted with remoteSocketId:', remoteSocketId);
     initializeCall();
 
     return () => {
@@ -40,6 +41,7 @@ function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall }) {
    */
   const initializeCall = async () => {
     try {
+      console.log('🚀 initializeCall() starting...');
       // Get local media stream
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
@@ -59,6 +61,7 @@ function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall }) {
         peerConnectionRef.current.addTrack(track, stream);
       });
 
+      console.log('📡 About to call setupWebRTCListeners()...');
       // Setup WebRTC event listeners
       setupWebRTCListeners();
 
@@ -138,9 +141,11 @@ function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall }) {
    * Setup WebRTC signaling listeners
    */
   const setupWebRTCListeners = () => {
+    console.log('📡 Setting up WebRTC listeners... remoteSocketId:', remoteSocketIdRef.current);
+    
     // Handle call accepted - create offer
     const handleCallAccepted = async (data) => {
-      console.log('✅ Call accepted by', data.from);
+      console.log('✅ Call accepted by', data.from, 'fromSocketId:', data.fromSocketId);
       remoteSocketIdRef.current = data.fromSocketId;
       
       // Add a small delay to ensure receiver has peer connection ready
@@ -168,7 +173,7 @@ function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall }) {
 
     // Handle receiving offer - create answer
     const handleWebRTCOffer = async (data) => {
-      console.log('📥 Received WebRTC offer from', data.fromSocketId);
+      console.log('📥 Received WebRTC offer from', data.fromSocketId, 'offer type:', data.offer?.type);
       remoteSocketIdRef.current = data.fromSocketId;
 
       try {
@@ -258,6 +263,14 @@ function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall }) {
     on('webrtc-answer', handleWebRTCAnswer);
     on('ice-candidate', handleIceCandidate);
     on('call-ended', handleCallEnded);
+
+    console.log('✅ WebRTC listeners registered:', {
+      'call-accepted': true,
+      'webrtc-offer': true,
+      'webrtc-answer': true,
+      'ice-candidate': true,
+      'call-ended': true
+    });
 
     // Cleanup listeners
     return () => {

@@ -179,6 +179,7 @@ function ChatRoom({ roomId, username, onLeaveRoom }) {
     if (!otherUser) return;
 
     setCallType(isVideo ? 'video' : 'audio');
+    setRemoteSocketId(otherUser.socketId); // Set remote socket ID before initiating call
     setInCall(true);
     emit('call-user', { roomId, isVideo });
   };
