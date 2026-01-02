@@ -11,7 +11,7 @@ function Login({ onJoinRoom }) {
     setError('');
 
     if (!roomId.trim()) {
-      setError('Please enter a Room ID');
+      setError('Please enter a Workspace ID');
       return;
     }
 
@@ -27,18 +27,18 @@ function Login({ onJoinRoom }) {
     <div className="login-container">
       <div className="login-box">
         <div className="login-header">
-          <div className="logo">💬</div>
-          <h1>WhatsApp-like Chat</h1>
-          <p>Real-time messaging with WebRTC calling</p>
+          <div className="logo">�</div>
+          <h1>Enterprise Member Portal</h1>
+          <p>Secure workspace collaboration platform</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="input-group">
-            <label htmlFor="roomId">Room ID</label>
+            <label htmlFor="roomId">Workspace ID</label>
             <input
               id="roomId"
               type="text"
-              placeholder="Enter or create a room ID"
+              placeholder="Enter your workspace ID"
               value={roomId}
               onChange={(e) => setRoomId(e.target.value)}
               autoFocus
@@ -59,14 +59,14 @@ function Login({ onJoinRoom }) {
           {error && <div className="error-message">{error}</div>}
 
           <button type="submit" className="join-button">
-            Join Room
+            Access Workspace
           </button>
         </form>
 
         <div className="info-text">
-          <p>💡 Share the same Room ID with a friend to chat</p>
-          <p>📱 Maximum 2 users per room</p>
-          <p>🔄 Messages vanish on page refresh</p>
+          <p>� Secure end-to-end collaboration</p>
+          <p>👥 Maximum 2 participants per workspace</p>
+          <p>⚡ Real-time synchronization</p>
         </div>
       </div>
     </div>
