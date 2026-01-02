@@ -10,9 +10,16 @@ echo "🔄 Updating whimperi.ng application..."
 # Navigate to project directory
 cd ~/whimperi.ng
 
+# Stash any local changes to avoid conflicts
+echo "💾 Stashing local changes..."
+git stash
+
 # Pull latest changes
 echo "📥 Pulling latest code from GitHub..."
-git pull
+git pull origin main
+
+# Reapply stashed changes if needed (optional)
+# git stash pop
 
 # Install dependencies if package.json changed
 echo "📦 Checking for dependency updates..."
