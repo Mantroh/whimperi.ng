@@ -1,35 +1,37 @@
 /* Mobile keyboard and viewport fixes */
 
-/* Force EVERYTHING to be fixed and prevent any scrolling */
-html, body {
-  height: 100vh;
-  width: 100vw;
+/* Allow body to scroll naturally but prevent jumping */
+html {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
   position: fixed;
   top: 0;
   left: 0;
-  overflow: hidden !important;
-  -webkit-user-select: none;
   margin: 0;
   padding: 0;
 }
 
-/* Prevent any scrolling on root elements */
 #root {
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden !important;
-  position: fixed;
-  top: 0;
-  left: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .chat-room {
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden !important;
-  position: fixed;
-  top: 0;
-  left: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
 }
 
 /* Fix for iOS Safari keyboard issue */
@@ -37,45 +39,42 @@ input, textarea {
   font-size: 16px; /* Prevents zoom on iOS */
 }
 
-/* CRITICAL: Ensure header ALWAYS stays at top - use viewport fixed positioning */
+/* Header stays fixed at top */
 .chat-header {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  width: 100vw !important;
-  z-index: 2000 !important;
-  height: auto;
-  margin: 0 !important;
-  padding: 12px 16px !important;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
+  flex-shrink: 0;
+  background: #202c33;
+  border-bottom: 1px solid #2a3942;
 }
 
-/* Ensure message list respects fixed header and input */
+/* Messages scroll in middle, accounting for header and input */
 .message-list {
-  position: fixed !important;
-  top: 57px !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 70px !important;
-  width: 100vw !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  flex: none !important;
-  margin: 0 !important;
-  padding: 16px !important;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-top: 57px; /* Header height */
+  margin-bottom: 70px; /* Input height */
+  padding: 16px;
+  background-color: #0b141a;
 }
 
-/* Ensure message input stays at bottom with full width */
+/* Input stays at bottom - use fixed positioning */
 .message-input {
-  position: fixed !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  width: 100vw !important;
-  z-index: 1999 !important;
-  height: auto;
-  margin: 0 !important;
-  padding: 12px 16px !important;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 999;
+  flex-shrink: 0;
+  background: #202c33;
+  border-top: 1px solid #2a3942;
+  margin: 0;
 }
 
 /* Prevent input zoom on iOS */
