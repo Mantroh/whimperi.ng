@@ -101,9 +101,13 @@ module.exports = function(io, socketToRoom, rooms) {
      */
     socket.on('webrtc-offer', ({ roomId, offer, targetSocketId }) => {
       const userInfo = socketToRoom.get(socket.id);
-      if (!userInfo) return;
+      if (!userInfo) {
+        console.log('❌ User not found for offer');
+        return;
+      }
 
-      console.log(`📤 WebRTC offer from ${userInfo.username}`);
+      console.log(`📤 WebRTC offer from ${userInfo.username} to ${targetSocketId}`);
+      console.log(`   Offer type: ${offer.type}`);
 
       // Forward offer to the target user
       io.to(targetSocketId).emit('webrtc-offer', {
@@ -111,6 +115,8 @@ module.exports = function(io, socketToRoom, rooms) {
         fromSocketId: socket.id,
         from: userInfo.username
       });
+      
+      console.log(`✅ Offer forwarded to ${targetSocketId}`);
     });
 
     /**
@@ -119,9 +125,13 @@ module.exports = function(io, socketToRoom, rooms) {
      */
     socket.on('webrtc-answer', ({ roomId, answer, targetSocketId }) => {
       const userInfo = socketToRoom.get(socket.id);
-      if (!userInfo) return;
+      if (!userInfo) {
+        console.log('❌ User not found for answer');
+        return;
+      }
 
-      console.log(`📥 WebRTC answer from ${userInfo.username}`);
+      console.log(`📥 WebRTC answer from ${userInfo.username} to ${targetSocketId}`);
+      console.log(`   Answer type: ${answer.type}`);
 
       // Forward answer to the caller
       io.to(targetSocketId).emit('webrtc-answer', {
@@ -129,6 +139,8 @@ module.exports = function(io, socketToRoom, rooms) {
         fromSocketId: socket.id,
         from: userInfo.username
       });
+      
+      console.log(`✅ Answer forwarded to ${targetSocketId}`);
     });
 
     /**
@@ -137,10 +149,14 @@ module.exports = function(io, socketToRoom, rooms) {
      */
     socket.on('ice-candidate', ({ roomId, candidate, targetSocketId }) => {
       const userInfo = socketToRoom.get(socket.id);
-      if (!userInfo) return;
+      if (!userInfo) {
+        console.log('❌ User not found for ICE candidate');
+        return;
+      }
 
       // Forward ICE candidate to the other peer
       if (targetSocketId) {
+        console.log(`🧊 Forwarding ICE candidate from ${userInfo.username} to ${targetSocketId}`);
         io.to(targetSocketId).emit('ice-candidate', {
           candidate,
           fromSocketId: socket.id
