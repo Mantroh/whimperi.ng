@@ -7,6 +7,8 @@
 html {
   height: 100%;
   width: 100%;
+  position: fixed;
+  overflow: hidden;
 }
 
 body {
@@ -20,12 +22,16 @@ body {
   width: 100%;
   overflow: hidden;
   position: fixed;
+  margin: 0;
+  padding: 0;
 }
 
 #root {
   height: 100vh;
-  height: 100dvh; /* Mobile viewport height fix */
-  width: 100vw;
-  width: 100dvw;
+  width: 100%;
   overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
 }
