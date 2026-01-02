@@ -1,0 +1,69 @@
+/* Mobile keyboard and viewport fixes */
+
+/* Prevent scrolling when keyboard is visible */
+@media (max-height: 600px) {
+  html, body {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* Fix for iOS Safari keyboard issue */
+input, textarea {
+  font-size: 16px; /* Prevents zoom on iOS */
+}
+
+/* Ensure message list respects fixed header and input */
+.message-list {
+  position: fixed !important;
+  top: 60px !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 100px !important;
+  flex: none !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Ensure message input stays at bottom */
+.message-input {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 99 !important;
+}
+
+/* Ensure header stays at top */
+.chat-header {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 100 !important;
+}
+
+/* Prevent input zoom on iOS */
+.message-input input {
+  font-size: 16px;
+}
+
+/* Prevent double-tap zoom */
+button {
+  touch-action: manipulation;
+}
+
+/* Prevent rubber band scroll effect on iOS */
+body {
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Allow text selection in messages */
+.message-content {
+  -webkit-user-select: text;
+  user-select: text;
+}

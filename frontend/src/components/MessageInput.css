@@ -5,6 +5,12 @@
   gap: 12px;
   align-items: center;
   border-top: 1px solid #2a3942;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 99;
+  flex-shrink: 0;
 }
 
 .message-input input {

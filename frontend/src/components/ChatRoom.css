@@ -2,10 +2,12 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh; /* Use dynamic viewport height for mobile */
   background: #0b141a;
   max-width: 1200px;
   margin: 0 auto;
   position: relative;
+  overflow: hidden;
 }
 
 .error-banner {
@@ -24,6 +26,12 @@
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid #2a3942;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  flex-shrink: 0;
 }
 
 .header-left {
