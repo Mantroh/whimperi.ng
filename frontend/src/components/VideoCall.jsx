@@ -77,6 +77,8 @@ function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall }) {
     const pc = new RTCPeerConnection(ICE_SERVERS);
     peerConnectionRef.current = pc;
 
+    console.log('🔧 Creating peer connection with ICE servers:', ICE_SERVERS);
+
     // Handle ICE candidates
     pc.onicecandidate = (event) => {
       if (event.candidate && remoteSocketIdRef.current) {
@@ -86,26 +88,34 @@ function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall }) {
           candidate: event.candidate,
           targetSocketId: remoteSocketIdRef.current
         });
+      } else if (!event.candidate) {
+        console.log('✅ All ICE candidates sent');
       }
     };
 
     // Handle remote stream
     pc.ontrack = (event) => {
       console.log('📥 Received remote track:', event.track.kind);
-      if (remoteVideoRef.current && event.streams[0]) {
+      if (remoteVideoRef.current && event.streams && event.streams[0]) {
+        console.log('🎬 Setting remote video stream');
         remoteVideoRef.current.srcObject = event.streams[0];
         setCallStatus('connected');
       }
     };
 
-    // Handle connection state changes - this is more reliable than ontrack
+    // Handle signaling state changes
+    pc.onsignalingstatechange = () => {
+      console.log('📡 Signaling state:', pc.signalingState);
+    };
+
+    // Handle connection state changes
     pc.onconnectionstatechange = () => {
       console.log('🔗 Connection state:', pc.connectionState);
       if (pc.connectionState === 'connected') {
-        console.log('✅ Peer connection established');
+        console.log('✅✅✅ PEER CONNECTION ESTABLISHED ✅✅✅');
         setCallStatus('connected');
       } else if (pc.connectionState === 'failed') {
-        console.error('❌ Peer connection failed');
+        console.error('❌ Peer connection FAILED');
         setTimeout(() => onEndCall(), 1000);
       } else if (pc.connectionState === 'disconnected') {
         console.warn('⚠️ Peer connection disconnected');
@@ -113,9 +123,12 @@ function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall }) {
       }
     };
 
-    // Handle ICE connection state as well
+    // Handle ICE connection state
     pc.oniceconnectionstatechange = () => {
-      console.log('🧊 ICE state:', pc.iceConnectionState);
+      console.log('🧊 ICE connection state:', pc.iceConnectionState);
+      if (pc.iceConnectionState === 'failed') {
+        console.error('❌ ICE connection failed - checking for NAT issues');
+      }
     };
 
     return pc;
@@ -130,19 +143,22 @@ function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall }) {
       console.log('✅ Call accepted by', data.from);
       remoteSocketIdRef.current = data.fromSocketId;
       
-      // Wait a moment for peer connection to be ready
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Add a small delay to ensure receiver has peer connection ready
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Create and send offer
       try {
         console.log('🎬 Creating offer...');
-        const offer = await peerConnectionRef.current.createOffer();
+        const offer = await peerConnectionRef.current.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: isVideo
+        });
         await peerConnectionRef.current.setLocalDescription(offer);
         
         console.log('📤 Sending offer to', data.fromSocketId);
         emit('webrtc-offer', {
           roomId,
-          offer,
+          offer: offer,
           targetSocketId: data.fromSocketId
         });
       } catch (error) {
@@ -156,18 +172,29 @@ function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall }) {
       remoteSocketIdRef.current = data.fromSocketId;
 
       try {
+        // Ensure peer connection exists and is ready
+        if (!peerConnectionRef.current) {
+          console.error('❌ Peer connection not initialized');
+          return;
+        }
+
         console.log('⚙️ Setting remote description (offer)...');
-        const rtcSessionDesc = new RTCSessionDescription(data.offer);
-        await peerConnectionRef.current.setRemoteDescription(rtcSessionDesc);
+        await peerConnectionRef.current.setRemoteDescription(
+          new RTCSessionDescription(data.offer)
+        );
 
         console.log('🎬 Creating answer...');
-        const answer = await peerConnectionRef.current.createAnswer();
+        const answer = await peerConnectionRef.current.createAnswer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: isVideo
+        });
+        
         await peerConnectionRef.current.setLocalDescription(answer);
 
         console.log('📤 Sending answer to', data.fromSocketId);
         emit('webrtc-answer', {
           roomId,
-          answer,
+          answer: answer,
           targetSocketId: data.fromSocketId
         });
       } catch (error) {
@@ -180,26 +207,43 @@ function VideoCall({ roomId, isVideo, remoteSocketId, onEndCall }) {
       console.log('📥 Received WebRTC answer from', data.fromSocketId);
       
       try {
+        if (!peerConnectionRef.current) {
+          console.error('❌ Peer connection not initialized');
+          return;
+        }
+
         console.log('⚙️ Setting remote description (answer)...');
-        const rtcSessionDesc = new RTCSessionDescription(data.answer);
-        await peerConnectionRef.current.setRemoteDescription(rtcSessionDesc);
-        console.log('✅ Answer set successfully');
+        await peerConnectionRef.current.setRemoteDescription(
+          new RTCSessionDescription(data.answer)
+        );
+        console.log('✅ Answer set successfully - waiting for ICE candidates');
       } catch (error) {
         console.error('❌ Error handling answer:', error);
       }
     };
 
-    // Handle ICE candidate
+    // Handle ICE candidate - buffer candidates if remote description not set yet
     const handleIceCandidate = async (data) => {
       try {
+        if (!peerConnectionRef.current) {
+          console.error('❌ Peer connection not initialized');
+          return;
+        }
+
         if (data.candidate) {
           console.log('🧊 Adding ICE candidate from', data.fromSocketId);
-          await peerConnectionRef.current.addIceCandidate(
-            new RTCIceCandidate(data.candidate)
-          );
+          try {
+            await peerConnectionRef.current.addIceCandidate(
+              new RTCIceCandidate(data.candidate)
+            );
+          } catch (error) {
+            // Ignore errors for candidates that can't be added yet
+            // (remote description might not be set)
+            console.log('⚠️ Could not add ICE candidate yet (normal):', error.message);
+          }
         }
       } catch (error) {
-        console.error('❌ Error adding ICE candidate:', error);
+        console.error('❌ Error in ICE handler:', error);
       }
     };
 
